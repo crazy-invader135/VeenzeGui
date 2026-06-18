@@ -1,4 +1,4 @@
--- Save this script as the full library. It returns a table to build windows.
+-- Full UI Library with Core Animations Enabled
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -7,7 +7,7 @@ local TeleportService = game:GetService("TeleportService")
 
 local Library = {}
 
--- Ensure old instances are destroyed so it updates cleanly
+-- Ensure old instances are destroyed to keep the cleanup rule intact
 if CoreGui:FindFirstChild("VeenzeUiLibrary") then
     CoreGui:FindFirstChild("VeenzeUiLibrary"):Destroy()
 end
@@ -61,7 +61,9 @@ function Library:CreateWindow(scriptTitle)
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            TweenService:Create(MainFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            }):Play()
         end
     end)
 
@@ -77,7 +79,6 @@ function Library:CreateWindow(scriptTitle)
     SidebarCorner.CornerRadius = UDim.new(0, 8)
     SidebarCorner.Parent = Sidebar
 
-    -- Cover up right corners of sidebar to keep main frame rounded style seamless
     local SidebarCover = Instance.new("Frame")
     SidebarCover.Size = UDim2.new(0, 10, 1, 0)
     SidebarCover.Position = UDim2.new(1, -10, 0, 0)
@@ -141,7 +142,6 @@ function Library:CreateWindow(scriptTitle)
     PagesFolder.Name = "Pages"
     PagesFolder.Parent = ContentPanel
 
-    -- Tracking tabs and elements
     local Window = {
         CurrentTab = nil,
         Tabs = {},
@@ -155,14 +155,33 @@ function Library:CreateWindow(scriptTitle)
         end
     end)
 
+    -- Smooth Page Transition Fade Effect
     local function SwitchPage(targetPage)
         for _, page in pairs(PagesFolder:GetChildren()) do
-            page.Visible = false
+            if page.Visible and page ~= targetPage then
+                local canvasGroup = page:FindFirstChildOfClass("CanvasGroup") or page
+                TweenService:Create(canvasGroup, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1}):Play()
+                task.delay(0.15, function() page.Visible = false end)
+            end
         end
+        
         targetPage.Visible = true
+        local targetGroup = targetPage:FindFirstChildOfClass("CanvasGroup") or targetPage
+        targetGroup.GroupTransparency = 1
+        TweenService:Create(targetGroup, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
     end
 
-    -- Create Standard Page Layout Creator
+    -- Setup Hover Animation Helpers
+    local function AddHoverAnimation(element, defaultColor, hoverColor)
+        element.MouseEnter:Connect(function()
+            TweenService:Create(element, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = hoverColor}):Play()
+        end)
+        element.MouseLeave:Connect(function()
+            TweenService:Create(element, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = defaultColor}):Play()
+        end)
+    end
+
+    -- Create Standard Page Layout Creator with Canvas Groups for clean fades
     local function CreatePageFrame(name)
         local PageFrame = Instance.new("ScrollingFrame")
         PageFrame.Name = name .. "Page"
@@ -174,16 +193,22 @@ function Library:CreateWindow(scriptTitle)
         PageFrame.Visible = false
         PageFrame.Parent = PagesFolder
 
+        local FadeGroup = Instance.new("CanvasGroup")
+        FadeGroup.Size = UDim2.new(1, 0, 1, 0)
+        FadeGroup.BackgroundTransparency = 1
+        FadeGroup.Parent = PageFrame
+
         local PageLayout = Instance.new("UIListLayout")
         PageLayout.Padding = UDim.new(0, 8)
         PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        PageLayout.Parent = PageFrame
+        PageLayout.Parent = FadeGroup
 
         PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             PageFrame.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 10)
+            FadeGroup.Size = UDim2.new(1, 0, 0, PageLayout.AbsoluteContentSize.Y + 10)
         end)
 
-        return PageFrame
+        return PageFrame, FadeGroup
     end
 
     -- Sidebar Footer Control Setup (Credits & Settings)
@@ -202,6 +227,7 @@ function Library:CreateWindow(scriptTitle)
     CreditsButton.Font = Enum.Font.SourceSans
     CreditsButton.TextSize = 14
     CreditsButton.Parent = FooterContainer
+    AddHoverAnimation(CreditsButton, Color3.fromRGB(45, 45, 45), Color3.fromRGB(55, 55, 55))
 
     local CreditsBtnCorner = Instance.new("UICorner")
     CreditsBtnCorner.CornerRadius = UDim.new(0, 6)
@@ -217,9 +243,10 @@ function Library:CreateWindow(scriptTitle)
     SettingsButton.Size = UDim2.new(0, 32, 0, 32)
     SettingsButton.Position = UDim2.new(1, -32, 0, 1)
     SettingsButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    SettingsButton.Image = "rbxassetid://7072721666" -- Minimalist gear icon asset
+    SettingsButton.Image = "rbxassetid://7072721666"
     SettingsButton.ImageColor3 = Color3.fromRGB(140, 165, 175)
     SettingsButton.Parent = FooterContainer
+    AddHoverAnimation(SettingsButton, Color3.fromRGB(45, 45, 45), Color3.fromRGB(55, 55, 55))
 
     local SettingsBtnCorner = Instance.new("UICorner")
     SettingsBtnCorner.CornerRadius = UDim.new(0, 6)
@@ -231,11 +258,11 @@ function Library:CreateWindow(scriptTitle)
     SettingsBtnStroke.Parent = SettingsButton
 
     -- Setup Specialized Static Windows
-    local CreditsPage = CreatePageFrame("Credits")
+    local CreditsPage, CreditsGroup = CreatePageFrame("Credits")
     local CreditsInner = Instance.new("Frame")
     CreditsInner.Size = UDim2.new(1, -5, 0, 320)
     CreditsInner.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    CreditsInner.Parent = CreditsPage
+    CreditsInner.Parent = CreditsGroup
 
     local CreditsInnerCorner = Instance.new("UICorner")
     CreditsInnerCorner.CornerRadius = UDim.new(0, 8)
@@ -258,7 +285,7 @@ function Library:CreateWindow(scriptTitle)
     CreditsLabel.TextYAlignment = Enum.TextYAlignment.Top
     CreditsLabel.Parent = CreditsInner
 
-    local SettingsPage = CreatePageFrame("Settings")
+    local SettingsPage, SettingsGroup = CreatePageFrame("Settings")
     
     CreditsButton.MouseButton1Click:Connect(function()
         SwitchPage(CreditsPage)
@@ -279,6 +306,7 @@ function Library:CreateWindow(scriptTitle)
         TabButton.Font = Enum.Font.SourceSans
         TabButton.TextSize = 14
         TabButton.Parent = TabContainer
+        AddHoverAnimation(TabButton, Color3.fromRGB(45, 45, 45), Color3.fromRGB(60, 60, 60))
 
         local TabBtnCorner = Instance.new("UICorner")
         TabBtnCorner.CornerRadius = UDim.new(0, 6)
@@ -289,13 +317,12 @@ function Library:CreateWindow(scriptTitle)
         TabBtnStroke.Thickness = 1
         TabBtnStroke.Parent = TabButton
 
-        local Page = CreatePageFrame(tabName)
+        local Page, FadeGroup = CreatePageFrame(tabName)
 
-        -- Top section tracking row header within the page
         local PageHeader = Instance.new("Frame")
         PageHeader.Size = UDim2.new(1, -5, 0, 32)
         PageHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        PageHeader.Parent = Page
+        PageHeader.Parent = FadeGroup
 
         local PageHeaderCorner = Instance.new("UICorner")
         PageHeaderCorner.CornerRadius = UDim.new(0, 6)
@@ -320,6 +347,7 @@ function Library:CreateWindow(scriptTitle)
         if Window.CurrentTab == nil then
             Window.CurrentTab = Page
             Page.Visible = true
+            FadeGroup.GroupTransparency = 0
         end
 
         TabButton.MouseButton1Click:Connect(function()
@@ -328,14 +356,14 @@ function Library:CreateWindow(scriptTitle)
 
         local TabMethods = {}
 
-        -- Element: Toggle
+        -- Element: Toggle with Smooth Sliding Indicator Animation
         function TabMethods:CreateToggle(toggleName, default, callback)
             local enabled = default or false
             
             local ToggleFrame = Instance.new("Frame")
             ToggleFrame.Size = UDim2.new(1, -5, 0, 35)
             ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            ToggleFrame.Parent = Page
+            ToggleFrame.Parent = FadeGroup
 
             local ToggleCorner = Instance.new("UICorner")
             ToggleCorner.CornerRadius = UDim.new(0, 6)
@@ -387,7 +415,10 @@ function Library:CreateWindow(scriptTitle)
                 local targetPos = enabled and UDim2.new(1, -20, 0.5, -8) or UDim2.new(0, 4, 0.5, -8)
                 local targetColor = enabled and Color3.fromRGB(0, 255, 50) or Color3.fromRGB(255, 50, 50)
                 
-                TweenService:Create(Indicator, TweenInfo.new(0.15), {Position = targetPos, BackgroundColor3 = targetColor}):Play()
+                TweenService:Create(Indicator, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Position = targetPos, 
+                    BackgroundColor3 = targetColor
+                }):Play()
                 callback(enabled)
             end
 
@@ -396,7 +427,6 @@ function Library:CreateWindow(scriptTitle)
                 UpdateToggle()
             end)
 
-            -- Allow clicking row background to activate toggle
             local OverlayButton = Instance.new("TextButton")
             OverlayButton.Size = UDim2.new(1, -60, 1, 0)
             OverlayButton.BackgroundTransparency = 1
@@ -417,7 +447,8 @@ function Library:CreateWindow(scriptTitle)
             ButtonFrame.TextColor3 = Color3.fromRGB(255, 255, 255)
             ButtonFrame.Font = Enum.Font.SourceSans
             ButtonFrame.TextSize = 14
-            ButtonFrame.Parent = Page
+            ButtonFrame.Parent = FadeGroup
+            AddHoverAnimation(ButtonFrame, Color3.fromRGB(45, 45, 45), Color3.fromRGB(55, 55, 55))
 
             local ButtonCorner = Instance.new("UICorner")
             ButtonCorner.CornerRadius = UDim.new(0, 6)
@@ -428,7 +459,14 @@ function Library:CreateWindow(scriptTitle)
             ButtonStroke.Thickness = 1
             ButtonStroke.Parent = ButtonFrame
 
-            ButtonFrame.MouseButton1Click:Connect(callback)
+            ButtonFrame.MouseButton1Click:Connect(function()
+                -- Subtle click flash feedback animation
+                TweenService:Create(ButtonFrame, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(65, 65, 65)}):Play()
+                task.delay(0.05, function()
+                    TweenService:Create(ButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+                end)
+                callback()
+            end)
         end
 
         -- Element: Slider
@@ -436,7 +474,7 @@ function Library:CreateWindow(scriptTitle)
             local SliderFrame = Instance.new("Frame")
             SliderFrame.Size = UDim2.new(1, -5, 0, 40)
             SliderFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            SliderFrame.Parent = Page
+            SliderFrame.Parent = FadeGroup
 
             local SliderCorner = Instance.new("UICorner")
             SliderCorner.CornerRadius = UDim.new(0, 6)
@@ -513,8 +551,11 @@ function Library:CreateWindow(scriptTitle)
                 local value = math.floor(min + (max - min) * percentage)
                 
                 SliderValueLabel.Text = tostring(value)
-                SliderKnob.Position = UDim2.new(percentage, -7, 0.5, -7)
-                SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+                
+                -- Smooth out the track slider filling motion 
+                TweenService:Create(SliderKnob, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(percentage, -7, 0.5, -7)}):Play()
+                TweenService:Create(SliderFill, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(percentage, 0, 1, 0)}):Play()
+                
                 callback(value)
             end
 
@@ -537,7 +578,7 @@ function Library:CreateWindow(scriptTitle)
             end)
         end
 
-        -- Element: Dropdown
+        -- Element: Dropdown with Interpolated Drop Opening Height Transitions
         function TabMethods:CreateDropdown(dropdownName, options, callback)
             local Expanded = false
             
@@ -545,7 +586,7 @@ function Library:CreateWindow(scriptTitle)
             DropdownContainer.Size = UDim2.new(1, -5, 0, 35)
             DropdownContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
             DropdownContainer.ClipsDescendants = true
-            DropdownContainer.Parent = Page
+            DropdownContainer.Parent = FadeGroup
 
             local DropdownCorner = Instance.new("UICorner")
             DropdownCorner.CornerRadius = UDim.new(0, 6)
@@ -585,12 +626,13 @@ function Library:CreateWindow(scriptTitle)
             OptionLayout.Parent = OptionListFrame
 
             local function RefreshContainerSize()
+                local targetHeight = 35
                 if Expanded then
-                    local totalHeight = 40 + OptionLayout.AbsoluteContentSize.Y
-                    DropdownContainer.Size = UDim2.new(1, -5, 0, totalHeight)
-                else
-                    DropdownContainer.Size = UDim2.new(1, -5, 0, 35)
+                    targetHeight = 40 + OptionLayout.AbsoluteContentSize.Y
                 end
+                TweenService:Create(DropdownContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(1, -5, 0, targetHeight)
+                }):Play()
             end
 
             for index, option in pairs(options) do
@@ -604,6 +646,7 @@ function Library:CreateWindow(scriptTitle)
                 OptionButton.TextSize = 14
                 OptionButton.TextXAlignment = Enum.TextXAlignment.Left
                 OptionButton.Parent = OptionListFrame
+                AddHoverAnimation(OptionButton, Color3.fromRGB(38, 38, 38), Color3.fromRGB(48, 48, 48))
 
                 local OptCorner = Instance.new("UICorner")
                 OptCorner.CornerRadius = UDim.new(0, 4)
@@ -637,6 +680,7 @@ function Library:CreateWindow(scriptTitle)
         TabButton.Font = Enum.Font.SourceSans
         TabButton.TextSize = 14
         TabButton.Parent = TabContainer
+        AddHoverAnimation(TabButton, Color3.fromRGB(45, 45, 45), Color3.fromRGB(60, 60, 60))
 
         local TabBtnCorner = Instance.new("UICorner")
         TabBtnCorner.CornerRadius = UDim.new(0, 6)
@@ -647,12 +691,12 @@ function Library:CreateWindow(scriptTitle)
         TabBtnStroke.Thickness = 1
         TabBtnStroke.Parent = TabButton
 
-        local Page = CreatePageFrame("SupportedGames")
+        local Page, FadeGroup = CreatePageFrame("SupportedGames")
 
         local PageHeader = Instance.new("Frame")
         PageHeader.Size = UDim2.new(1, -5, 0, 32)
         PageHeader.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        PageHeader.Parent = Page
+        PageHeader.Parent = FadeGroup
 
         local PageHeaderCorner = Instance.new("UICorner")
         PageHeaderCorner.CornerRadius = UDim.new(0, 6)
@@ -682,7 +726,7 @@ function Library:CreateWindow(scriptTitle)
             local GameRow = Instance.new("Frame")
             GameRow.Size = UDim2.new(1, -5, 0, 35)
             GameRow.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            GameRow.Parent = Page
+            GameRow.Parent = FadeGroup
 
             local RowCorner = Instance.new("UICorner")
             RowCorner.CornerRadius = UDim.new(0, 6)
@@ -704,7 +748,6 @@ function Library:CreateWindow(scriptTitle)
             GameLabel.TextXAlignment = Enum.TextXAlignment.Left
             GameLabel.Parent = GameRow
 
-            -- Status Indicator Circle
             local StatusDot = Instance.new("Frame")
             StatusDot.Size = UDim2.new(0, 12, 0, 12)
             StatusDot.Position = UDim2.new(0, 195, 0.5, -6)
@@ -732,6 +775,7 @@ function Library:CreateWindow(scriptTitle)
             JoinButton.Font = Enum.Font.SourceSans
             JoinButton.TextSize = 14
             JoinButton.Parent = GameRow
+            AddHoverAnimation(JoinButton, Color3.fromRGB(215, 55, 55), Color3.fromRGB(235, 75, 75))
 
             local JoinCorner = Instance.new("UICorner")
             JoinCorner.CornerRadius = UDim.new(0, 4)
@@ -745,12 +789,12 @@ function Library:CreateWindow(scriptTitle)
         end
     end
 
-    -- Build Out System Configuration Controls (Image 4)
+    -- Build Out System Configuration Controls (Image 4 Settings)
     local function SetupSettingsTab()
         local Header = Instance.new("Frame")
         Header.Size = UDim2.new(1, -5, 0, 32)
         Header.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        Header.Parent = SettingsPage
+        Header.Parent = SettingsGroup
 
         local HeaderCorner = Instance.new("UICorner")
         HeaderCorner.CornerRadius = UDim.new(0, 6)
@@ -780,7 +824,8 @@ function Library:CreateWindow(scriptTitle)
         LoadConfigBtn.Font = Enum.Font.SourceSans
         LoadConfigBtn.TextSize = 14
         LoadConfigBtn.TextXAlignment = Enum.TextXAlignment.Left
-        LoadConfigBtn.Parent = SettingsPage
+        LoadConfigBtn.Parent = SettingsGroup
+        AddHoverAnimation(LoadConfigBtn, Color3.fromRGB(45, 45, 45), Color3.fromRGB(55, 55, 55))
 
         local LCCorner = Instance.new("UICorner")
         LCCorner.CornerRadius = UDim.new(0, 6)
@@ -791,11 +836,10 @@ function Library:CreateWindow(scriptTitle)
         LCStroke.Thickness = 1
         LCStroke.Parent = LoadConfigBtn
 
-        -- Config Dropdown List Container Frame
         local ConfigDropdown = Instance.new("Frame")
         ConfigDropdown.Size = UDim2.new(1, -5, 0, 85)
         ConfigDropdown.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        ConfigDropdown.Parent = SettingsPage
+        ConfigDropdown.Parent = SettingsGroup
 
         local CDCorner = Instance.new("UICorner")
         CDCorner.CornerRadius = UDim.new(0, 6)
@@ -828,6 +872,7 @@ function Library:CreateWindow(scriptTitle)
         Config1.TextXAlignment = Enum.TextXAlignment.Left
         Config1.Parent = ConfigDropdown
         Instance.new("UICorner", Config1).CornerRadius = UDim.new(0, 4)
+        AddHoverAnimation(Config1, Color3.fromRGB(35, 35, 35), Color3.fromRGB(45, 45, 45))
 
         local Config2 = Instance.new("TextButton")
         Config2.Size = UDim2.new(0, 180, 0, 22)
@@ -840,6 +885,7 @@ function Library:CreateWindow(scriptTitle)
         Config2.TextXAlignment = Enum.TextXAlignment.Left
         Config2.Parent = ConfigDropdown
         Instance.new("UICorner", Config2).CornerRadius = UDim.new(0, 4)
+        AddHoverAnimation(Config2, Color3.fromRGB(35, 35, 35), Color3.fromRGB(45, 45, 45))
 
         local ResetConfigBtn = Instance.new("TextButton")
         ResetConfigBtn.Size = UDim2.new(1, -5, 0, 32)
@@ -849,7 +895,8 @@ function Library:CreateWindow(scriptTitle)
         ResetConfigBtn.Font = Enum.Font.SourceSans
         ResetConfigBtn.TextSize = 14
         ResetConfigBtn.TextXAlignment = Enum.TextXAlignment.Left
-        ResetConfigBtn.Parent = SettingsPage
+        ResetConfigBtn.Parent = SettingsGroup
+        AddHoverAnimation(ResetConfigBtn, Color3.fromRGB(45, 45, 45), Color3.fromRGB(55, 55, 55))
 
         local RCCorner = Instance.new("UICorner")
         RCCorner.CornerRadius = UDim.new(0, 6)
@@ -868,7 +915,8 @@ function Library:CreateWindow(scriptTitle)
         SaveConfigBtn.Font = Enum.Font.SourceSans
         SaveConfigBtn.TextSize = 14
         SaveConfigBtn.TextXAlignment = Enum.TextXAlignment.Left
-        SaveConfigBtn.Parent = SettingsPage
+        SaveConfigBtn.Parent = SettingsGroup
+        AddHoverAnimation(SaveConfigBtn, Color3.fromRGB(45, 45, 45), Color3.fromRGB(55, 55, 55))
 
         local SCCorner = Instance.new("UICorner")
         SCCorner.CornerRadius = UDim.new(0, 6)
@@ -879,11 +927,10 @@ function Library:CreateWindow(scriptTitle)
         SCStroke.Thickness = 1
         SCStroke.Parent = SaveConfigBtn
 
-        -- Keybind Selector Element Row
         local BindFrame = Instance.new("Frame")
         BindFrame.Size = UDim2.new(1, -5, 0, 35)
         BindFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        BindFrame.Parent = SettingsPage
+        BindFrame.Parent = SettingsGroup
 
         local BindCorner = Instance.new("UICorner")
         BindCorner.CornerRadius = UDim.new(0, 6)
