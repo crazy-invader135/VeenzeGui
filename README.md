@@ -180,5 +180,5 @@ Tab:CreateSlider(name: string, min: number, max: number, default: number, callba
 ```lua
 Tab:CreateDropdown(name: string, options: table, callback: function)
 ```
-* **Description:** Collapsible index arrays that stretch open cleanly. Returns a string corresponding to the element option chosen.
-```
+
+(this may or may not be ai bc im too lazy to make doccumentation)
