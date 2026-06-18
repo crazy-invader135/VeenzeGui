@@ -1,4 +1,3 @@
--- Full UI Library with Core Animations Enabled
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -7,7 +6,6 @@ local TeleportService = game:GetService("TeleportService")
 
 local Library = {}
 
--- Ensure old instances are destroyed to keep the cleanup rule intact
 if CoreGui:FindFirstChild("VeenzeUiLibrary") then
     CoreGui:FindFirstChild("VeenzeUiLibrary"):Destroy()
 end
@@ -20,7 +18,6 @@ function Library:CreateWindow(scriptTitle)
     VeenzeUiLibrary.Parent = CoreGui
     VeenzeUiLibrary.ResetOnSpawn = false
 
-    -- Main GUI Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 650, 0, 420)
@@ -39,7 +36,7 @@ function Library:CreateWindow(scriptTitle)
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     MainStroke.Parent = MainFrame
 
-    -- Dragging Logic
+    -- Smooth Dragging Animation Logic
     local dragging, dragInput, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -61,13 +58,12 @@ function Library:CreateWindow(scriptTitle)
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            TweenService:Create(MainFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            TweenService:Create(MainFrame, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
             }):Play()
         end
     end)
 
-    -- Left Sidebar Panel
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 160, 1, 0)
@@ -86,7 +82,6 @@ function Library:CreateWindow(scriptTitle)
     SidebarCover.BorderSizePixel = 0
     SidebarCover.Parent = Sidebar
 
-    -- Tab Container Scrolling Frame
     local TabContainer = Instance.new("ScrollingFrame")
     TabContainer.Name = "TabContainer"
     TabContainer.Size = UDim2.new(1, -16, 1, -120)
@@ -101,7 +96,6 @@ function Library:CreateWindow(scriptTitle)
     TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     TabListLayout.Parent = TabContainer
 
-    -- Title Bar Top Right
     local TitleContainer = Instance.new("Frame")
     TitleContainer.Name = "TitleContainer"
     TitleContainer.Size = UDim2.new(1, -180, 0, 40)
@@ -130,7 +124,6 @@ function Library:CreateWindow(scriptTitle)
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Parent = TitleContainer
 
-    -- Main Content Display Area
     local ContentPanel = Instance.new("Frame")
     ContentPanel.Name = "ContentPanel"
     ContentPanel.Size = UDim2.new(1, -180, 1, -80)
@@ -148,14 +141,13 @@ function Library:CreateWindow(scriptTitle)
         Binding = Enum.KeyCode.RightControl
     }
 
-    -- Hide/Show UI via Keybind
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if not gameProcessed and input.KeyCode == Window.Binding then
             VeenzeUiLibrary.Enabled = not VeenzeUiLibrary.Enabled
         end
     end)
 
-    -- Smooth Page Transition Fade Effect
+    -- Smooth Canvas Fade Page Transitions
     local function SwitchPage(targetPage)
         for _, page in pairs(PagesFolder:GetChildren()) do
             if page.Visible and page ~= targetPage then
@@ -168,10 +160,10 @@ function Library:CreateWindow(scriptTitle)
         targetPage.Visible = true
         local targetGroup = targetPage:FindFirstChildOfClass("CanvasGroup") or targetPage
         targetGroup.GroupTransparency = 1
-        TweenService:Create(targetGroup, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
+        TweenService:Create(targetGroup, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
     end
 
-    -- Setup Hover Animation Helpers
+    -- Universal Hover Animation Helper
     local function AddHoverAnimation(element, defaultColor, hoverColor)
         element.MouseEnter:Connect(function()
             TweenService:Create(element, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = hoverColor}):Play()
@@ -181,7 +173,6 @@ function Library:CreateWindow(scriptTitle)
         end)
     end
 
-    -- Create Standard Page Layout Creator with Canvas Groups for clean fades
     local function CreatePageFrame(name)
         local PageFrame = Instance.new("ScrollingFrame")
         PageFrame.Name = name .. "Page"
@@ -211,7 +202,6 @@ function Library:CreateWindow(scriptTitle)
         return PageFrame, FadeGroup
     end
 
-    -- Sidebar Footer Control Setup (Credits & Settings)
     local FooterContainer = Instance.new("Frame")
     FooterContainer.Size = UDim2.new(1, -16, 0, 35)
     FooterContainer.Position = UDim2.new(0, 8, 1, -45)
@@ -257,7 +247,6 @@ function Library:CreateWindow(scriptTitle)
     SettingsBtnStroke.Thickness = 1
     SettingsBtnStroke.Parent = SettingsButton
 
-    -- Setup Specialized Static Windows
     local CreditsPage, CreditsGroup = CreatePageFrame("Credits")
     local CreditsInner = Instance.new("Frame")
     CreditsInner.Size = UDim2.new(1, -5, 0, 320)
@@ -295,7 +284,6 @@ function Library:CreateWindow(scriptTitle)
         SwitchPage(SettingsPage)
     end)
 
-    -- Window Methods
     function Window:CreateTab(tabName)
         local TabButton = Instance.new("TextButton")
         TabButton.Name = tabName .. "Tab"
@@ -356,7 +344,7 @@ function Library:CreateWindow(scriptTitle)
 
         local TabMethods = {}
 
-        -- Element: Toggle with Smooth Sliding Indicator Animation
+        -- Element: Toggle with Smooth Slideward & Color Tween Animations
         function TabMethods:CreateToggle(toggleName, default, callback)
             local enabled = default or false
             
@@ -438,7 +426,7 @@ function Library:CreateWindow(scriptTitle)
             end)
         end
 
-        -- Element: Button
+        -- Element: Button with Quick Feedback Click-Flash Flash Animation
         function TabMethods:CreateButton(buttonName, callback)
             local ButtonFrame = Instance.new("TextButton")
             ButtonFrame.Size = UDim2.new(1, -5, 0, 32)
@@ -460,7 +448,6 @@ function Library:CreateWindow(scriptTitle)
             ButtonStroke.Parent = ButtonFrame
 
             ButtonFrame.MouseButton1Click:Connect(function()
-                -- Subtle click flash feedback animation
                 TweenService:Create(ButtonFrame, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(65, 65, 65)}):Play()
                 task.delay(0.05, function()
                     TweenService:Create(ButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
@@ -469,7 +456,7 @@ function Library:CreateWindow(scriptTitle)
             end)
         end
 
-        -- Element: Slider
+        -- Element: Slider with Responsive Track Filling Animation
         function TabMethods:CreateSlider(sliderName, min, max, default, callback)
             local SliderFrame = Instance.new("Frame")
             SliderFrame.Size = UDim2.new(1, -5, 0, 40)
@@ -552,7 +539,6 @@ function Library:CreateWindow(scriptTitle)
                 
                 SliderValueLabel.Text = tostring(value)
                 
-                -- Smooth out the track slider filling motion 
                 TweenService:Create(SliderKnob, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(percentage, -7, 0.5, -7)}):Play()
                 TweenService:Create(SliderFill, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(percentage, 0, 1, 0)}):Play()
                 
@@ -578,7 +564,7 @@ function Library:CreateWindow(scriptTitle)
             end)
         end
 
-        -- Element: Dropdown with Interpolated Drop Opening Height Transitions
+        -- Element: Dropdown with Smooth Vertical Height Opening / Closing Tweens
         function TabMethods:CreateDropdown(dropdownName, options, callback)
             local Expanded = false
             
@@ -630,7 +616,7 @@ function Library:CreateWindow(scriptTitle)
                 if Expanded then
                     targetHeight = 40 + OptionLayout.AbsoluteContentSize.Y
                 end
-                TweenService:Create(DropdownContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                TweenService:Create(DropdownContainer, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                     Size = UDim2.new(1, -5, 0, targetHeight)
                 }):Play()
             end
@@ -669,7 +655,6 @@ function Library:CreateWindow(scriptTitle)
         return TabMethods
     end
 
-    -- Element: Create Specialized "Supported Games" Tab View
     function Window:CreateSupportedGamesTab(gamesList)
         local TabButton = Instance.new("TextButton")
         TabButton.Name = "SupportedGamesTab"
@@ -789,7 +774,6 @@ function Library:CreateWindow(scriptTitle)
         end
     end
 
-    -- Build Out System Configuration Controls (Image 4 Settings)
     local function SetupSettingsTab()
         local Header = Instance.new("Frame")
         Header.Size = UDim2.new(1, -5, 0, 32)
